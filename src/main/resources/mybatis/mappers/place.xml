@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.dao.PlaceDao">
+
+	<!-- 검색 조건에 따른 데이터의 총 갯수 -->
+	<select id="getTotalCountByCondition" parameterType="map" resultType="int">
+		select
+			count(*)
+		from
+			show_place
+		<where>
+			<if test="opt != null and keyword != null">
+				<choose>
+					<when test="opt == 'placeName'">
+						place_name like '%' || #{keyword} || '%'
+					</when>
+					<when test="opt == 'address'">
+						place_address like '%' || #{keyword} || '%'
+					</when>
+				</choose>
+			</if>
+			<if test="local == '서울'">
+				and local_name = '서울'
+			</if>
+			<if test="local == '경기/인천'">
+				and local_name = '경기/인천'
+			</if>
+			<if test="local == '충청/강원'">
+				and local_name = '충청/강원'
+			</if>
+			<if test="local == '부산/대구'">
+				and local_name = '부산/대구'
+			</if>
+			<if test="local == '광주/전라'">
+				and local_name = '광주/전라'
+			</if>
+			<if test="local == '제주'">
+				and local_name = '제주'
+			</if>
+		</where>
+	</select>
+	
+	<!-- 검색 조건에 따른 데이터의 조회 내역 -->
+	<select id="getPlacesByCondition" parameterType="map" resultType="Place">
+		select *
+		from (
+			select
+				row_number() over (order by place_no desc) as rn,
+	            place_no as no,
+				local_name as localName,
+				place_name as placeName,
+				place_address as address,
+				seat_capacity as seatCapacity
+         	from
+            	show_place
+            <where>
+            	<if test="opt != null and keyword != null">
+					<choose>
+						<when test="opt == 'placeName'">
+							place_name like '%' || #{keyword} || '%'
+						</when>
+						<when test="opt == 'address'">
+							place_address like '%' || #{keyword} || '%'
+						</when>
+					</choose>
+				</if>
+				<if test="local == '서울'">
+					and local_name = '서울'
+				</if>
+				<if test="local == '경기/인천'">
+				and local_name = '경기/인천'
+				</if>
+				<if test="local == '충청/강원'">
+					and local_name = '충청/강원'
+				</if>
+				<if test="local == '부산/대구'">
+					and local_name = '부산/대구'
+				</if>
+				<if test="local == '광주/전라'">
+					and local_name = '광주/전라'
+				</if>
+				<if test="local == '제주'">
+					and local_name = '제주'
+				</if>
+            </where>
+      		)
+      <where>
+	      <if test="begin != 0 and end != 0">
+	         rn >= #{begin} and rn &lt;= #{end}
+	      </if>
+      </where>
+	</select>
+
+	<select id="getAllPlaces" resultType="Place">
+		select
+			place_no as no,
+			local_name as localName,
+			place_name as placeName,
+			place_address as address,
+			seat_capacity as seatCapacity
+		from
+			show_place
+		order by
+			place_no desc
+	</select>
+	
+	<select id="getPlaceByNo" parameterType="int" resultType="Place">
+		select
+			place_no as no,
+			local_name as localName,
+			place_name as placeName,
+			place_address as address,
+			seat_capacity as seatCapacity
+		from
+			show_place
+		where
+			place_no = #{value}
+	</select>
+	
+	<insert id="insertPlace" parameterType="Place">
+		insert into show_place(
+			place_no, local_name, place_name, place_address, seat_capacity
+		)
+		values (
+			show_place_seq.nextval, #{localName}, #{placeName}, #{address}, #{seatCapacity}
+		)
+	</insert>
+	
+	<update id="updatePlace" parameterType="Place">
+		update
+			show_place
+		set
+			place_no = #{no} 
+			local_name = #{localName}
+			place_name  = #{placeName} 
+			place_address = #{address}
+			seat_capacity = #{seatCapacity}
+		where
+			place_no = #{no}
+	</update>
+
+	<delete id="deletePlace" parameterType="int">
+		delete from show_place where place_no = #{value}
+	</delete>
+</mapper>

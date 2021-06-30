@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.dao.ActorDao">
+
+	<select id="getActorByPutShowNo" parameterType="int" resultType="ActorDto">
+		select
+			A.actor_no as actorNo,
+			A.put_show_no as putShowNo,
+			B.actor_name as actorName
+		from
+			show_actors A, actors B 
+		where
+			A.put_show_no = #{value}
+		and
+			A.actor_no = B.actor_no
+	</select>
+
+</mapper>

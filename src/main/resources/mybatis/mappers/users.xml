@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.example.demo.dao.UserDao">
+
+	<!-- ADMIN 테이블은 이 프로젝트에서 관리하지 않음 -->
+	<!-- user_able_status가 Y든 N든 user/list.jsp를 같이 공유함 -->
+	
+	<!-- 검색 조건에 따른 데이터의 총 갯수 -->
+	<select id="getTotalCountByCondition" parameterType="map" resultType="int">
+		select
+			count(*)
+		from
+			show_users A, show_user_roles B
+		where
+			A.user_no = B.user_no
+		and
+			B.user_able_status = #{status}
+		<if test="opt != null and keyword != null">
+			<choose>
+				<when test="opt == 'id'">
+					and A.user_id like '%' || #{keyword} || '%'
+				</when>
+				<when test="opt == 'name'">
+					and A.user_name like '%' || #{keyword} || '%'
+				</when>
+			</choose>
+		</if>
+	</select>
+	
+	<!-- 검색 조건에 따른 데이터의 조회 내역 -->
+	<select id="getUsersByCondition" parameterType="map" resultType="UserDto">
+		select *
+		from (
+			select
+			<choose>
+				<when test="sort == 'name'">
+					row_number() over (order by A.user_name asc) as rn,
+				</when>
+				<when test="sort == 'date'">
+					row_number() over (order by A.user_created_date asc) as rn,
+				</when>
+			</choose>
+				A.user_no as no,
+				A.user_name as name,
+				A.user_id as id,
+				A.user_password as password,
+				A.user_birth as birth,
+				A.user_tel as tel,
+				A.user_email as email,
+				A.user_address as address,
+				A.email_receiving_consent as emailReceivingConsent,
+				A.sms_receiving_consent as smsReceivingConsent,
+				A.user_available_point as availablePoint,
+				A.user_created_date as createdDate,
+				B.user_role as role,
+				B.user_able_status as ableStatus,
+				B.user_withdrawal_date as withdrawalDate
+			from
+				show_users A, show_user_roles B
+			where
+				A.user_no = B.user_no
+			and
+				B.user_able_status = #{status}
+			<if test="opt != null and keyword != null">
+				<choose>
+					<when test="opt == 'id'">
+						and A.user_id like '%' || #{keyword} || '%'
+					</when>
+					<when test="opt == 'name'">
+						and A.user_name like '%' || #{keyword} || '%'
+					</when>
+				</choose>
+			</if>
+			)
+		where
+			<if test="begin != 0 and end != 0">
+				rn >= #{begin} and rn &lt;= #{end}
+			</if>
+	</select>
+	
+	<!-- status에 따른 구분은 jsp에서 하고 있으니 조건에 없어도 될 듯 -->
+	<select id="getUserById" parameterType="string" resultType="UserDto">
+		select
+			A.user_no as no,
+			A.user_name as name,
+			A.user_id as id,
+			A.user_password as password,
+			A.user_birth as birth,
+			A.user_tel as tel,
+			A.user_email as email,
+			A.user_address as address,
+			A.email_receiving_consent as emailReceivingConsent,
+			A.sms_receiving_consent as smsReceivingConsent,
+			A.user_available_point as availablePoint,
+			A.user_created_date as createdDate,
+			B.user_role as role,
+			B.user_able_status as ableStatus,
+			B.user_withdrawal_date as withdrawalDate
+		from
+			show_users A, show_user_roles B
+		where
+			A.user_no = B.user_no
+		and
+			A.user_id = #{value}
+	</select>
+	
+	<!-- status에 따른 구분은 jsp에서 하고 있으니 조건에 없어도 될 듯 -->
+	<select id="getUserByNo" parameterType="int" resultType="UserDto">
+		select
+			A.user_no as no,
+			A.user_name as name,
+			A.user_id as id,
+			A.user_password as password,
+			A.user_birth as birth,
+			A.user_tel as tel,
+			A.user_email as email,
+			A.user_address as address,
+			A.email_receiving_consent as emailReceivingConsent,
+			A.sms_receiving_consent as smsReceivingConsent,
+			A.user_available_point as availablePoint,
+			A.user_created_date as createdDate,
+			B.user_role as role,
+			B.user_able_status as ableStatus,
+			B.user_withdrawal_date as withdrawalDate
+		from
+			show_users A, show_user_roles B
+		where
+			A.user_no = B.user_no
+		and
+			A.user_no = #{value}
+	</select>
+	
+	<select id="getUserRoleByNo" parameterType="int" resultType="UserRole">
+		select
+			user_no as no,
+			user_role as role,
+			user_able_status as ableStatus,
+			user_withdrawal_date as withdrawalDate
+		from
+			show_user_roles
+		where
+			user_no = #{value}
+	</select>
+	
+	<!-- 조인 해야 하나 -->
+	<!-- 탈퇴하지 않은 User의 회원상세정보를 변경한다. -->
+	<!-- 완전한 데이터 삭제는 여기서는 사실상 사용할 일이 없긴 함 -->
+	<update id="updateUser" parameterType="User">
+		update
+			show_users
+		set
+			user_name = #{name}, <!-- 개명할 경우 -->
+			user_password = #{password},
+			user_birth = #{birth},
+			user_tel = #{tel},
+			user_email = #{email},
+			user_address = #{address},
+			email_receiving_consent = #{emailReceivingConsent},
+			sms_receiving_consent = #{smsReceivingConsent},
+			user_available_point = #{availablePoint}
+		where
+			user_no = #{no}
+	</update>
+	
+	<!-- 탈퇴 기능으로 이용한다. User의 계정 사용 여부를 N으로 변경하며 탈퇴일자를 sysdate로 넣어야 한다. -->
+	<update id="updateUserRole" parameterType="UserRole">
+		update
+			show_user_roles
+		set
+			user_no = #{no},
+			user_role = #{role},
+			user_able_status = #{ableStatus},
+			user_withdrawal_date = #{withdrawalDate, jdbcType=DATE} <!-- 파라미터에 null이 들어왔을 경우 허용할 수 있음 -->
+		where 
+			user_no = #{no}
+	</update>
+	
+</mapper>

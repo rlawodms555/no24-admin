@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.dao.ShowDao">
+	
+	<!-- 검색 조건에 따른 데이터의 총 갯수 -->
+	<select id="getTotalCountByCondition" parameterType="map" resultType="int">
+		select
+			count(*)
+		from
+			shows
+		<where>
+			<if test="opt != null and keyword != null">
+				<choose>
+					<when test="opt == 'title'">
+						show_name like '%' || #{keyword} || '%'
+					</when>
+				</choose>
+			</if>
+		</where>
+	</select>
+	
+	<!-- 검색 조건에 따른 데이터의 조회 내역 -->
+	<select id="getShowsByCondition" parameterType="map" resultType="Show">
+		select *
+		from (
+			select
+			<choose>
+				<when test="sort == 'date'">
+					row_number() over (order by show_created_date desc) rn,
+				</when>
+				<when test="sort == 'endDate'">
+					row_number() over (order by end_date desc) as rn,
+				</when>
+			</choose>
+	            show_no as no,
+				category_no as categoryNo,
+				show_name as name,
+				viewing_no as viewingNo,
+				running_time as runningTime,
+				poster_img as posterImg,
+				begin_date as beginDate,
+				end_date as endDate,
+				place_no as placeNo,
+				attention_img as attentionImg,
+				sale_img as saleImg,
+				show_detail_img as showDetailImg,
+				show_created_date as createdDate
+         	from
+            	shows
+            <where>
+            	<if test="opt != null and keyword != null">
+					<choose>
+						<when test="opt == 'title'">
+							show_name like '%' || #{keyword} || '%'
+						</when>
+					</choose>
+				</if>
+            </where>
+      		)
+      <where>
+	      <if test="begin != 0 and end != 0">
+	         rn >= #{begin} and rn &lt;= #{end}
+	      </if>
+      </where>
+	</select>
+	
+	<select id="getAllShows" resultType="Show">
+		select
+			show_no as no,
+			category_no as categoryNo,
+			show_name as name,
+			viewing_no as viewingNo,
+			running_time as runningTime,
+			poster_img as posterImg,
+			begin_date as beginDate,
+			end_date as endDate,
+			place_no as placeNo,
+			attention_img as attentionImg,
+			sale_img as saleImg,
+			show_detail_img as showDetailImg,
+			show_created_date as createdDate
+		from
+			shows
+		order by 
+			show_no desc
+	</select>
+	
+	<!-- detail.jsp에서 상단에서 이용 -->
+	<select id="getShowByNo" parameterType="int" resultType="ShowDto">
+		select
+			A.show_no as no,
+			A.category_no as categoryNo,
+			A.show_name as name,
+			A.viewing_no as viewingNo,
+			A.running_time as runningTime,
+			A.poster_img as posterImg,
+			A.begin_date as beginDate,
+			A.end_date as endDate,
+			A.place_no as placeNo,
+			A.attention_img as attentionImg,
+			A.sale_img as saleImg,
+			A.show_detail_img as showDetailImg,
+			A.show_created_date as createdDate,
+			B.local_name as localName,
+			B.place_name as placeName,
+			B.place_address as address,
+			B.seat_capacity as seatCapacity,
+			C.viewing_grade_name as viewingGradeName
+		from 
+			shows A, show_place B, show_viewing_grades C
+		where
+			A.show_no = #{value}
+        and
+            A.place_no = B.place_no
+        and
+        	A.viewing_no = C.viewing_no
+	</select>
+	
+	<!-- 해당 공연번호에 따른 카테고리(셀프조인), 공연, 상연, 공연장소, 출연진 정보를 동시에 조회한다. detail.jsp에서 이용 -->
+	<!-- 
+		show_categories에서 VO의 name이 아니라 categoryName으로 적었기에 set으로 값을 직접 담아야 함! 
+		shows의 show_name과 변수명이 중복되기 때문
+		아 오류 뜨네 물어보게 일단 주석처리 
+	-->
+	<select id="getAllAboutShowByNo" parameterType="int" resultType="ShowDto">
+		select
+			A.category_name as categoryName,
+			A.top_category_no as topCategoryNo,
+		
+			C.show_no as no,
+			C.category_no as categoryNo,
+			C.show_name as name,
+			C.viewing_no as viewingNo,
+			C.running_time as runningTime,
+			C.poster_img as posterImg,
+			C.begin_date as beginDate,
+			C.end_date as endDate,
+			C.place_no as placeNo,
+			C.attention_img as attentionImg,
+			C.sale_img as saleImg,
+			C.show_detail_img as showDetailImg,
+			C.show_created_date as createdDate,
+			
+			D.put_show_no as putShowNo,
+			D.show_day as showDay,
+			D.show_start_time as showStartTime,
+			
+			E.local_name as localName,
+			E.place_name as placeName,
+			E.place_address as address,
+			E.seat_capacity as seatCapacity,
+			
+			F.actor_no as actorNo,
+			G.actor_name as actorName
+		from 
+			show_categories A, show_categories B, shows C, show_put_shows D, show_place E, show_actors F, actors G
+		where
+			C.show_no = #{value}
+        and
+            A.category_no = B.category_no
+		and
+            A.category_no = C.category_no
+		and	
+            C.show_no = D.show_no
+		and 
+			C.place_no = E.place_no
+        and
+            D.put_show_no = F.put_show_no
+		and	
+			F.actor_no = G.actor_no
+        order by 
+        	D.put_show_no
+	</select>
+	
+	
+	<insert id="insertShow" parameterType="Show">
+		insert into shows(
+			show_no,
+			category_no,
+			show_name,
+			viewing_no,
+			running_time,
+			poster_img,
+			begin_date,
+			end_date,
+			place_no,
+			attention_img,
+			sale_img,
+			show_detail_img
+		)
+		values (
+			shows_seq.nextval,
+			#{categoryNo},
+			#{name},
+			#{viewingNo},
+			#{runningTime},
+			#{posterImg},
+			#{beginDate},
+			#{endDate},
+			#{placeNo},
+			#{attentionImg},
+			#{saleImg},
+			#{showDetailImg}
+		)
+	</insert>
+
+	<update id="updateShow" parameterType="Show">
+		update 
+			shows
+		set
+			show_no = #{no},
+			category_no = #{categoryNo},
+			show_name = #{name},
+			viewing_no = #{viewingNo},
+			running_time = #{runningTime},
+			poster_img = #{posterImg},
+			begin_date = #{beginDate},
+			end_date = #{endDate},
+			place_no = #{placeNo},
+			attention_img = #{attentionImg},
+			sale_img = #{saleImg},
+			show_detail_img = #{showDetailImg},
+			show_created_date = #{createdDate}
+		where
+			show_no = #{no}
+	</update>
+	
+	<delete id="deleteShow" parameterType="int">
+		delete from shows 
+		where show_no = #{value}
+	</delete>
+	
+	<!-- home.do에 뿌려지는 공연정보 -->
+	<select id="getShowHome" resultType="Show">
+		select 
+			show_no as no,
+			category_no as categoryNo,
+			show_name as name,
+			viewing_no as viewingNo,
+			running_time as runningTime,
+			poster_img as posterImg,
+			begin_date as beginDate,
+			end_date as endDate,
+			place_no as placeNo,
+			attention_img as attentionImg,
+			sale_img as saleImg,
+			show_detail_img as showDetailImg,
+			show_created_date as createdDate
+		from (select * from shows order by show_created_date desc) where rownum &lt;=5
+	</select>
+</mapper>

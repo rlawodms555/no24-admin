@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.dao.PutShowDao">
+
+	<insert id="insertPutShow" parameterType="putShow">
+		insert into show_put_shows(
+			put_show_no,
+			show_no,
+			show_day,
+			show_start_time
+		)
+		values(
+			show_put_shows_seq.nextval,
+			#{showNo},
+			#{showDay},
+			#{showStartTime}
+		)
+	</insert>
+	
+	<update id="updatePutShow">
+	
+	</update>
+	
+	<select id="getPutShowByshowNo" parameterType="int" resultType="PutShow">
+		select
+			put_show_no as no,
+			show_no as showNo,
+			show_day as showDay,
+			show_start_time as showStartTime
+		from
+			show_put_shows
+		where
+			show_no = #{value}
+	</select>
+	
+</mapper>

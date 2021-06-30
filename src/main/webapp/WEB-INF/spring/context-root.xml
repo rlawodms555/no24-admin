@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mybatis-spring="http://mybatis.org/schema/mybatis-spring"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd
+		http://mybatis.org/schema/mybatis-spring http://mybatis.org/schema/mybatis-spring-1.2.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.3.xsd">
+
+	<!-- /data/db.properties 파일의 정보를 불러오는 클래스를 스프링의 빈으로 등록한다. -->
+	<context:property-placeholder location="classpath:/database/db.properties"/>
+
+	<!-- 데이터베이스 커넥션 풀링을 지원하는 클래스를 스프링 컨테이너의 빈으로 등록한다. -->
+	<bean id="dataSource" class="org.apache.commons.dbcp2.BasicDataSource">
+		<property name="driverClassName" value="${db.driverClassName}"></property>
+		<property name="url" value="${db.url}"></property>
+		<property name="username" value="${db.username}"></property>
+		<property name="password" value="${db.password}"></property>
+	</bean>
+	
+	<!-- 선언적 트랜잭션처리를 지원하는 트랜잭션매니저 클래스를 스프링 컨테이너의 빈으로 등록한다. -->
+	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource"></property>
+	</bean>
+	
+	<!-- @Transaction 어노테이션을 부착한 서비스클래스에 선언적트랜잭션처리를 지원하는 클래스를 스프링의 빈으로 등록한다. -->
+	<tx:annotation-driven transaction-manager="transactionManager"/>
+	
+	<!-- myBatis의 핵심클래스를 스프링 컨테이너의 빈으로 등록한다. -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource"></property>
+		<property name="typeAliasesPackage" value="com.example.demo.vo,com.example.demo.dto"></property>
+		<property name="mapperLocations" value="classpath:/mybatis/mappers/*.xml"></property>
+		<property name="configurationProperties">
+			<props>
+				<prop key="jdbcTypeForNull">NULL</prop>
+			</props>
+		</property>
+	</bean>
+	
+	<!-- Mapper Interface를 스캔해서 구현객체를 생성하고 스프링 컨테이너의 빈으로 등록하는 MapperScannerConfigurer를 스프링 컨테이너의 빈으로 등록한다. -->
+	<mybatis-spring:scan base-package="com.example.demo.dao" factory-ref="sqlSessionFactory"/>
+
+	<!-- @어노테이션 설정을 감지하고 적절한 작업을 수행하는 빈들을 스프링 컨테이너의 빈으로 등록한다. -->
+	<context:annotation-config></context:annotation-config>
+	
+	<!-- com.example.demo.service 패키지의 서비스구현클래스를 스캔해서 스프링 컨테이너의 빈으로 등록한다. -->
+	<context:component-scan base-package="com.example.demo.service"></context:component-scan>
+
+</beans>

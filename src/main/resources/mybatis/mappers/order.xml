@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.dao.OrderDao">
+
+	<!-- 월별 예매주문량 -->
+	<select id="getOrdersCreatedDateStats" resultType="int">
+		with order_months 
+		as (
+		select to_char(b.order_created_date, 'yyyy-mm') order_month, B.order_amount amount
+		from show_ticket_orders B, show_put_shows C, shows D
+		where b.put_show_no = c.put_show_no
+		and c.show_no = d.show_no
+		<if test="categoryNo != -1">
+		and d.category_no in (select x.category_no
+		                             from show_categories X
+		                             where x.top_category_no = #{categoryNo})
+		</if>
+		) 
+		, months
+		as (
+		    select to_char(sysdate, 'yyyy-') || trim(to_char(level, '09')) m
+		    from dual
+		    CONNECT BY level &lt;= 12
+		)
+		select nvl(sum(A.amount), 0) cnt
+		from order_months A, months B
+		where A.order_month(+) = B.m
+		group by B.m
+		order by B.m
+	</select>
+	
+	<!-- 월별 결제금액 -->
+	<select id="getTotalPaymentPriceStats" resultType="int">
+		with order_months 
+		as (
+		select to_char(b.order_created_date, 'yyyy-mm') order_month, B.total_payment_price amount
+		from show_ticket_orders B, show_put_shows C, shows D
+		where b.put_show_no = c.put_show_no
+		and c.show_no = d.show_no
+		<if test="categoryNo != -1">
+		and d.category_no in (select x.category_no
+		                             from show_categories X
+		                             where x.top_category_no = #{categoryNo})
+		</if>
+		) 
+		, months
+		as (
+		    select to_char(sysdate, 'yyyy-') || trim(to_char(level, '09')) m
+		    from dual
+		    CONNECT BY level &lt;= 12
+		)
+		select nvl(sum(A.amount), 0) cnt
+		from order_months A, months B
+		where A.order_month(+) = B.m
+		group by B.m
+		order by B.m
+	</select>
+	
+	<!-- 검색 조건에 따른 데이터의 총 갯수 -->
+	<select id="getTotalCountByCondition" parameterType="map" resultType="int">
+		select
+			count(*)
+		from
+			show_ticket_orders A, show_users B
+		where
+			A.user_no = B.user_no
+		<if test="opt != null and keyword != null">
+			<choose>
+				<when test="opt == 'id'">
+					and B.user_id like '%' || #{keyword} || '%'
+				</when>
+				<when test="opt == 'name'">
+					and B.user_name like '%' || #{keyword} || '%'
+				</when>
+			</choose>
+		</if>
+	</select>
+	
+	<!-- 검색 조건에 따른 데이터의 조회 내역 -->
+	<select id="getOrdersByCondition" parameterType="map" resultType="OrderDto">
+		select *
+		from (
+			select
+			<choose>
+				<when test="sort == 'date'">
+					row_number() over (order by A.order_created_date desc) as rn,
+				</when>
+				<when test="sort == 'name'">
+					row_number() over (order by B.user_name asc) as rn,
+				</when>
+			</choose>
+				A.order_no as no,
+				A.user_no as userNo,
+				A.put_show_no as putShowNo,
+				A.order_amount as amount,
+				A.order_status as status,
+				A.total_order_price as totalOrderPrice,
+				A.used_point as usedPoint,
+				A.total_payment_price as totalPaymentPrice,
+				A.order_payment_method as paymentMethod,
+				A.bank_no as bankNo,
+				A.bank_card_account as bankCardAccount,
+				A.order_created_date as createdDate,
+				A.coupon_history_no as couponHistoryNo,
+				
+				B.user_name as name,
+				B.user_id as id,
+				B.user_password as password,
+				B.user_birth as birth,
+				B.user_tel as tel,
+				B.user_email as email,
+				B.user_address as address,
+				B.email_receiving_consent as emailReceivingConsent,
+				B.sms_receiving_consent as smsReceivingConsent,
+				B.user_available_point as availablePoint,
+				B.user_created_date as userCreatedDate
+			from
+				show_ticket_orders A, show_users B
+			where
+				A.user_no = B.user_no
+			<if test="opt != null and keyword != null">
+				<choose>
+					<when test="opt == 'id'">
+						and C.user_id like '%' || #{keyword} || '%'
+					</when>
+					<when test="opt == 'name'">
+						and C.user_name like '%' || #{keyword} || '%'
+					</when>
+				</choose>
+			</if>
+			)
+		where
+			<if test="begin != 0 and end != 0">
+				rn >= #{begin} and rn &lt;= #{end}
+			</if>
+	</select>
+	
+	<!-- 
+	<select id="getOrdersByCondition" parameterType="map" resultType="OrderDto">
+		select *
+		from (
+			select
+			<choose>
+				<when test="sort == 'date'">
+					row_number() over (order by A.order_created_date desc) as rn,
+				</when>
+				<when test="sort == 'name'">
+					row_number() over (order by C.user_name asc) as rn,
+				</when>
+			</choose>
+				A.order_no as no,
+				A.user_no as userNo,
+				A.put_show_no as putShowNo,
+				A.order_amount as amount,
+				A.order_status as status,
+				A.total_order_price as totalOrderPrice,
+				A.used_point as usedPoint,
+				A.total_payment_price as totalPaymentPrice,
+				A.order_payment_method as paymentMethod,
+				A.bank_no as bankNo,
+				A.bank_card_account as bankCardAccount,
+				A.order_created_date as createdDate,
+				A.coupon_history_no as couponHistoryNo,
+				
+				B.order_item_no as orderItemNo,
+				B.seat_no as seatNo,
+				
+				C.user_name as name,
+				C.user_id as id,
+				C.user_password as password,
+				C.user_birth as birth,
+				C.user_tel as tel,
+				C.user_email as email,
+				C.user_address as address,
+				C.email_receiving_consent as emailReceivingConsent,
+				C.sms_receiving_consent as smsReceivingConsent,
+				C.user_available_point as availablePoint,
+				C.user_created_date as userCreatedDate,
+				
+				D.show_no as showNo,
+				D.show_day as showDay,
+				D.show_start_time as showStartTime,
+				
+				E.category_no as categoryNo,
+				E.show_name as showName,
+				E.viewing_no as viewingNo,
+				E.running_time as runningTime,
+				E.poster_img as posterImg,
+				E.begin_date as beginDate,
+				E.end_date as endDate,
+				E.place_no as placeNo,
+				E.attention_img as attentionImg,
+				E.sale_img as saleImg,
+				E.show_detail_img as showDetailImg,
+				E.show_created_date as showCreatedDate
+			from
+				show_ticket_orders A, show_ticket_order_items B, show_users C, show_put_shows D, shows E
+			where
+				A.order_no = B.order_no
+			and
+				A.user_no = C.user_no
+			and
+				A.put_show_no = D.put_show_no
+			and
+				D.show_no = E.show_no
+			<if test="opt != null and keyword != null">
+				<choose>
+					<when test="opt == 'id'">
+						and C.user_id like '%' || #{keyword} || '%'
+					</when>
+					<when test="opt == 'name'">
+						and C.user_name like '%' || #{keyword} || '%'
+					</when>
+				</choose>
+			</if>
+			)
+		where
+			<if test="begin != 0 and end != 0">
+				rn >= #{begin} and rn &lt;= #{end}
+			</if>
+	</select>
+	-->
+	
+	<!-- 
+	<select id="getAllAboutOrder" parameterType="int" resultType="ticketOrderDto">
+		select
+			A.ORDER_NO,
+			A.USER_NO,
+			A.PUT_SHOW_NO,
+			A.ORDER_AMOUNT,
+			A.ORDER_STATUS,
+			A.TOTAL_ORDER_PRICE,
+			A.USED_POINT,
+			A.TOTAL_PAYMENT_PRICE,
+			A.ORDER_PAYMENT_METHOD,
+			A.BANK_NO,
+			A.ORDER_CREATED_DATE,
+			A.COUPON_HISTORY_NO,
+			
+			B.ORDER_ITEM_NO,
+			B.SEAT_NO,
+			
+			C.user_no					as no,
+			C.user_name					as name,
+			C.user_id					as id,
+			C.user_password				as password,
+			C.user_birth				as birth,
+			C.user_tel					as tel,
+			C.user_email				as email,
+			C.user_address				as address,
+			C.email_receiving_consent	as emailReceivingConsent,
+			C.sms_receiving_consent		as smsReceivingConsent,
+			C.user_available_point 		as availablePoint,
+			C.user_created_date 		as createdDate
+			
+			D.PUT_SHOW_NO
+			D.SHOW_NO
+			D.SHOW_DAY
+			D.SHOW_START_TIME
+			
+			E.show_no as no,
+			E.category_no as categoryNo,
+			E.show_name as name,
+			E.viewing_no as viewingNo,
+			E.running_time as runningTime,
+			E.poster_img as posterImg,
+			E.begin_date as beginDate,
+			E.end_date as endDate,
+			E.place_no as placeNo,
+			E.attention_img as attentionImg,
+			E.sale_img as saleImg,
+			E.show_detail_img as showDetailImg,
+			E.show_created_date as createdDate,
+			
+			F.COUPON_HISTORY_NO
+			F.POINT_AMOUNT
+			F.POINT_CONTENT
+			F.POINT_CREATED_DATE,
+			
+			G.COUPON_NO
+			G.COUPON_NAME
+			G.COUPON_PRICE
+			G.COUPON_START_DATE
+			G.COUPON_END_DATE
+			G.COUPON_STATUS
+			
+			H.SEAT_NO
+			H.SHOW_SEAT_NO
+			H.TICKET
+		from
+			SHOW_TICKET_ORDERS A, SHOW_TICKET_ORDER_ITEMS B, show_users C, SHOW_PUT_SHOWS D, shows E, SHOW_USER_POINT_HISTORIES F, SHow_coupons G, SHOW_COUPON_HISTORIES H, show_seat I
+		where
+			A.order_no = b.order_no
+		and
+			A.order_no = C.user_no
+		and
+			
+	</select>
+	 -->
+	
+</mapper>

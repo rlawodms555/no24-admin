@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.dao.ReviewDao">
+	
+	<!-- 중복되는 컬럼은 제외했음. 별칭이 중복되기도 하고. -->
+	
+	<!-- 검색 조건에 따른 데이터의 총 갯수 -->
+	<select id="getTotalCountByCondition" parameterType="map" resultType="int">
+		select
+			count(*)
+		from
+			show_reviews A, show_users B, shows C
+		where
+			A.review_able_status = #{status}
+		and
+			A.user_no = B.user_no
+		and
+			A.show_no = C.show_no
+		<if test="opt != null and keyword != null">
+			<choose>
+				<when test="opt == 'id'">
+					and B.user_id like '%' || #{keyword} || '%'
+				</when>
+				<when test="opt == 'content'">
+					and A.review_content like '%' || #{keyword} || '%'
+				</when>
+			</choose>
+		</if>
+	</select>
+	
+	<!-- 검색 조건에 따른 데이터의 조회 내역 -->
+	<select id="getReviewsByCondition" parameterType="map" resultType="ReviewDto">
+		select *
+		from (
+			select
+			<choose>
+				<when test="sort == 'date'">
+					row_number() over (order by A.review_created_date desc) as rn,
+				</when>
+				<when test="sort == 'rating'">
+					row_number() over (order by A.review_rating desc) as rn,
+				</when>
+			</choose>
+				A.review_no as no,
+				A.show_no as showNo,
+				A.user_no as userNo,
+				A.review_rating as rating,
+				A.review_content as content,
+				A.review_able_status as ableStatus,
+				A.review_created_date as createdDate,
+			
+				B.user_name as userName,
+				B.user_id as id,
+				B.user_password as password,
+				B.user_birth as birth,
+				B.user_tel as tel,
+				B.user_email as email,
+				B.user_address as address,
+				B.email_receiving_consent as emailReceivingConsent,
+				B.sms_receiving_consent as smsReceivingConsent,
+				B.user_available_point as availablePoint,
+				B.user_created_date as userCreatedDate,
+		
+				C.category_no as categoryNo,
+				C.show_name as showName,
+				C.viewing_no as viewingNo,
+				C.running_time as runningTime,
+				C.poster_img as posterImg,
+				C.begin_date as beginDate,
+				C.end_date as endDate,
+				C.place_no as placeNo,
+				C.attention_img as attentionImg,
+				C.sale_img as saleImg,
+				C.show_detail_img as showDetailImg,
+				C.show_created_date as showCreatedDate
+			from
+				show_reviews A, show_users B, shows C
+			where
+				A.review_able_status = #{status}
+			and
+				A.user_no = B.user_no
+			and
+				A.show_no = C.show_no
+			<if test="opt != null and keyword != null">
+				<choose>
+					<when test="opt == 'id'">
+						and B.user_id like '%' || #{keyword} || '%'
+					</when>
+					<when test="opt == 'content'">
+						and A.review_content like '%' || #{keyword} || '%'
+					</when>
+				</choose>
+			</if>
+			)
+		where
+			<if test="begin != 0 and end != 0">
+				rn >= #{begin} and rn &lt;= #{end}
+			</if>
+	</select>
+	
+	<!-- 수정해야 함 -->
+	<select id="getAllAboutReviewByNo" parameterType="int" resultType="ReviewDto">
+		select
+			A.review_no as no,
+			A.show_no as showNo,
+			A.user_no as userNo,
+			A.review_rating as rating,
+			A.review_content as content,
+			A.review_able_status as ableStatus,
+			A.review_created_date as createdDate,
+		
+			B.user_name as userName,
+			B.user_id as id,
+			B.user_password as password,
+			B.user_birth as birth,
+			B.user_tel as tel,
+			B.user_email as email,
+			B.user_address as address,
+			B.email_receiving_consent as emailReceivingConsent,
+			B.sms_receiving_consent as smsReceivingConsent,
+			B.user_available_point as availablePoint,
+			B.user_created_date as userCreatedDate,
+	
+			C.category_no as categoryNo,
+			C.show_name as showName,
+			C.viewing_no as viewingNo,
+			C.running_time as runningTime,
+			C.poster_img as posterImg,
+			C.begin_date as beginDate,
+			C.end_date as endDate,
+			C.place_no as placeNo,
+			C.attention_img as attentionImg,
+			C.sale_img as saleImg,
+			C.show_detail_img as showDetailImg,
+			C.show_created_date as showCreatedDate
+		from
+			show_reviews A, show_users B, shows C
+		where
+			A.review_able_status = #{status}
+		and
+			A.user_no = B.user_no
+		and
+			A.show_no = C.show_no
+	</select>
+	
+	<select id="getReviewByNo" parameterType="int" resultType="Review">
+		select
+			review_no as no,
+			show_no as showNo,
+			user_no as userNo,
+			review_rating as rating,
+			review_content as content,
+			review_able_status as ableStatus,
+			review_created_date as createdDate
+		from
+			show_reviews
+		where
+			review_no = #{value}
+	</select>
+	
+	<insert id="insertReview" parameterType="Review">
+		insert into show_reviews(
+			review_no,
+			show_no,
+			user_no,
+			review_rating,
+			review_content
+		)
+		values (
+			show_review_seq.nextval,
+			#{showNo},
+			#{userNo},
+			#{rating},
+			#{content}
+		)
+	</insert>
+	
+	<!-- 리뷰 삭제 기능(review_able_status를 Y에서 N으로 변경)으로 이용 -->
+	<!-- 사용자 페이지에도 가져간다!! -->
+	<update id="updateReview" parameterType="Review">
+		update 
+			show_reviews
+		set
+			review_rating = #{rating},
+			review_content = #{content},
+			review_able_status = #{ableStatus}
+		where
+			review_no = #{no}
+	</update>
+	
+</mapper>

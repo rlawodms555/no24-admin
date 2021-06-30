@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd
+		http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.3.xsd">
+
+	<!-- META-INF 유무는 중요치 않음 -->
+	<context:property-placeholder location="classpath:/spring/config.properties"/>
+
+	<!-- spring mvc가 지원하는 어노테이션을 활성화시키는 클래스를 스프링 컨테이너의 빈으로 등록하기 -->
+	<mvc:annotation-driven>
+		<!-- 
+			사용자정의 HandlerMethodArgumentResolver 
+			(요청핸들러 메소드의 매개변수를 해석하는 객체)를 등록하기
+		-->
+		<mvc:argument-resolvers>
+			<bean class="com.example.demo.web.resolver.LoginUserAnnotationArgumentResolver"></bean>
+		</mvc:argument-resolvers>
+	</mvc:annotation-driven>
+	
+	<!-- /resources/** 로 시작하는 요청은 DispatcherServlet의 실행없이 /resources 폴더에서 해당 정적 리소스를 응답으로 제공하게 한다. -->
+	<mvc:resources mapping="/resources/**" location="/resources/"></mvc:resources>
+	
+	<!-- 사용자 정의 인터셉터 -->
+	<mvc:interceptors>
+		<mvc:interceptor>
+			<mvc:mapping path="/**"/>
+			<mvc:exclude-mapping path="/loginform.do"/>
+			<mvc:exclude-mapping path="/login.do"/>
+			<bean class="com.example.demo.web.interceptor.LoginCheckInterceptor"></bean>
+		</mvc:interceptor>
+	 </mvc:interceptors>
+ 	
+ 	<!-- InternalResourceViewResolver를 스프링 컨테이너의 빈으로 등록하고, jsp파일의 실제 경로를 설정한다. -->
+ 	<mvc:view-resolvers>
+ 		<mvc:jsp prefix="/WEB-INF/views/" suffix=".jsp"/>
+ 	</mvc:view-resolvers>
+ 	
+ 	<!-- 파일업로드 처리를 지원하는 리졸브를 빈으로 등록하세요 -->
+ 	<bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver"></bean>
+ 	
+ 	<!-- Controller, ControllerAdvice, View 클래스를 스캔해서 스프링 컨테이너의 빈으로 등록하세요 -->
+ 	<context:component-scan base-package="com.example.demo.web"></context:component-scan>
+</beans>
